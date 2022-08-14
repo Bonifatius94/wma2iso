@@ -6,12 +6,14 @@ from typing import List, Tuple
 
 
 PYTHON_EXE='python3'
+AUTORUN_FILE='AUTORUN.INF'
+AUTOPLAY_FILE='AutoPlay.m3u'
 
 
 def create_iso(
         wma_source_dir: str,
         iso_outfile: str,
-        iso_temp_dir: str='iso_temp'):
+        iso_temp_dir: str):
 
     if os.path.exists(iso_temp_dir) and os.path.isdir(iso_temp_dir):
         print(f"ISO directory '{iso_temp_dir}' is not empty, will be wiped and recreated.")
@@ -20,34 +22,35 @@ def create_iso(
     print('prepare files to be written to the ISO')
     shutil.copytree(wma_source_dir, iso_temp_dir)
 
-    print("create 'AutoList.wpl' and 'AUTORUN.INF' files")
+    print(f"create '{AUTOPLAY_FILE}' and '{AUTORUN_FILE}' files")
     wma_files = files_of_pattern_inside_folder(iso_temp_dir, './**/*.wma')
-    create_autolist_wpl_file(wma_files, iso_temp_dir)
-    create_autorun_file(iso_temp_dir)
+    create_m3u_file(wma_files, iso_temp_dir, AUTOPLAY_FILE)
+    create_autorun_file(iso_temp_dir, AUTORUN_FILE, AUTOPLAY_FILE)
 
     print("generate ISO file '{iso_outfile}'")
     isogen_py = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'pycdlib-genisoimage.py')
     os.system(f'{PYTHON_EXE} {isogen_py} -o {iso_outfile} -R -J -D {iso_temp_dir}')
-    # TODO: figure out if the flags -R -J -D are required to make auto-play work
     shutil.rmtree(iso_temp_dir)
 
 
-def create_autolist_wpl_file(
+def create_m3u_file(
         music_files: List[str],
         iso_dir: str,
-        wpl_file: str='AutoList.wpl'):
-    media_tags = [f'<media src="{music_path}"/>' for music_path in music_files]
-    wpl_content = f'<smil><body><seq>{" ".join(media_tags)}</seq></body></smil>'
+        autoplay_file: str):
 
-    wpl_filepath = os.path.join(iso_dir, wpl_file)
-    with open(wpl_filepath, mode='w', encoding='utf-8') as file:
-        file.write(wpl_content)
+    content = '\n'.join([file for file in music_files])
+    autoplay_filepath = os.path.join(iso_dir, autoplay_file)
+    with open(autoplay_filepath, mode='w', encoding='utf-8') as file:
+        file.write(content)
 
 
-def create_autorun_file(iso_dir: str, autorun_file: str='AUTORUN.INF'):
+def create_autorun_file(
+        iso_dir: str,
+        autorun_file: str,
+        autoplay_file: str):
     autorun_filepath = os.path.join(iso_dir, autorun_file)
     with open(autorun_filepath, mode='w', encoding='ascii') as file:
-        file.write('[autorun]\nshellexecute=AutoList.wpl')
+        file.write(f'[autorun]\r\nshellexecute={autoplay_file}')
 
 
 def read_script_args() -> Tuple[str, str, str]:
