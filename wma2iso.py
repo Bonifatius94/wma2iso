@@ -38,7 +38,10 @@ def create_m3u_file(
         iso_dir: str,
         autoplay_file: str):
 
-    content = '\n'.join([file for file in music_files])
+    if music_files[0].startswith('./') or music_files[0].startswith('.\\'):
+        music_files = [file[2:] for file in music_files]
+
+    content = '\r\n'.join([file for file in music_files])
     autoplay_filepath = os.path.join(iso_dir, autoplay_file)
     with open(autoplay_filepath, mode='w', encoding='utf-8') as file:
         file.write(content)
