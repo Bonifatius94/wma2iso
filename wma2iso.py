@@ -7,7 +7,7 @@ from typing import List, Tuple
 
 PYTHON_EXE='python3'
 AUTORUN_FILE='AUTORUN.INF'
-AUTOPLAY_FILE='AutoPlay.m3u'
+AUTOPLAY_FILE='Playlist.m3u'
 
 
 def create_iso(
@@ -24,36 +24,43 @@ def create_iso(
 
     print(f"create '{AUTOPLAY_FILE}' and '{AUTORUN_FILE}' files")
     wma_files = files_of_pattern_inside_folder(iso_temp_dir, './**/*.wma')
-    create_m3u_file(wma_files, iso_temp_dir, AUTOPLAY_FILE)
-    create_autorun_file(iso_temp_dir, AUTORUN_FILE, AUTOPLAY_FILE)
+    create_m3u_playlist_file(wma_files, iso_temp_dir, AUTOPLAY_FILE)
+    create_cdrom_autorun_file(iso_temp_dir, AUTORUN_FILE, AUTOPLAY_FILE)
 
     print("generate ISO file '{iso_outfile}'")
     isogen_py = os.path.join(os.path.dirname(os.path.realpath(__file__)), 'pycdlib-genisoimage.py')
-    os.system(f'{PYTHON_EXE} {isogen_py} -o {iso_outfile} -R -J -D {iso_temp_dir}')
+    os.system(f'{PYTHON_EXE} {isogen_py} -o {iso_outfile} -R -J -dir-mode 777 {iso_temp_dir}')
     shutil.rmtree(iso_temp_dir)
 
 
-def create_m3u_file(
+def create_m3u_playlist_file(
         music_files: List[str],
         iso_dir: str,
-        autoplay_file: str):
+        playlist_file: str):
 
     if music_files[0].startswith('./') or music_files[0].startswith('.\\'):
         music_files = [file[2:] for file in music_files]
 
     content = '\r\n'.join([file for file in music_files])
-    autoplay_filepath = os.path.join(iso_dir, autoplay_file)
+    autoplay_filepath = os.path.join(iso_dir, playlist_file)
     with open(autoplay_filepath, mode='w', encoding='utf-8') as file:
         file.write(content)
 
 
-def create_autorun_file(
+def create_cdrom_autorun_file(
         iso_dir: str,
         autorun_file: str,
-        autoplay_file: str):
+        playlist_file: str):
     autorun_filepath = os.path.join(iso_dir, autorun_file)
     with open(autorun_filepath, mode='w', encoding='ascii') as file:
-        file.write(f'[autorun]\r\nshellexecute={autoplay_file}')
+        file.write('[autorun]')
+        file.write(f'open={playlist_file}')
+        file.write(f'label=Play Audio')
+        file.write('')
+        file.write(f'[Content]')
+        file.write(f'MusicFiles=true')
+        file.write(f'PictureFiles=false')
+        file.write(f'VideoFiles=false')
 
 
 def read_script_args() -> Tuple[str, str, str]:
